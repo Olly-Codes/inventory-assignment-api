@@ -65,16 +65,25 @@ const generateReport = async (req, res, next) => {
 
         const userPrompt = buildReportPrompt(lowStockProducts, confirmedOrders, deadStockProducts, cancelledCount, totalRevenue);
 
-        const response = await ai.models.generateContent({
-            model: "gemini-3.5-flash",
-            contents: userPrompt,
-            config: {
-                systemInstruction: REPORT_SYSTEM_PROMPT,
-                temperature: 0.3,
-                responseMimeType: "application/json",
-                responseSchema: reportSchema,
-            },
-        });
+        let response;
+        try {
+            response = await ai.models.generateContent({
+                model: "gemini-3.5-flash",
+                contents: userPrompt,
+                config: {
+                    systemInstruction: REPORT_SYSTEM_PROMPT,
+                    temperature: 0.3,
+                    responseMimeType: "application/json",
+                    responseSchema: reportSchema,
+                },
+            });
+        } catch (aiErr) {
+            if (aiErr.message?.includes("UNAVAILABLE") || aiErr.message?.includes("503")) {
+                return res.status(503).json({ error: "The reporting model is experiencing high demand. Please try again shortly." });
+            }
+            next(aiErr);
+            return;
+        }
 
         const raw = response.text?.trim();
         if (!raw) {
