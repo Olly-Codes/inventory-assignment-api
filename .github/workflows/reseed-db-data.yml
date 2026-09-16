@@ -1,0 +1,26 @@
+name: Reseed DB Data
+
+on:
+  schedule:
+    - cron: '0 4 */3 * *' 
+  workflow_dispatch:
+
+jobs:
+  reseed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run seed script
+        env:
+          DB_DEV: ${{ secrets.DB_PROD }}
+        run: node ./src/config/db/populatedb.js
